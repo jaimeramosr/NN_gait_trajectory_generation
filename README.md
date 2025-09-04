@@ -1,13 +1,11 @@
 # Python Project.
 
-<h1>📊 Neural Network to generate gait kinematic trajectories with Python </h1>
+<h1>📊 Neural Network Gait Kinematic Trajectories </h1>
 <p>
-	This project focuses on creating a Neural Network, preparing input data for its training and testing, and reporting the results. These processes are conducted using Python.
-    <p>
-Para situarnos, el objetivo es, a partir de los parámetros antropométricos de una persona (longitud de fémur, tibia y anchura de caderas) y unos objetivos de la marcha (longitud y altura de paso), calcular las trayectorias articulares necesarias para que un robot ejecute ese paso.
+This project focuses on developing a Neural Network to generate gait kinematic trajectories based on <b>anthropometric parameters</b> (femur and tibia lengths, hip width) and <b>gait objectives</b> (step length and height). The trajectories are required for a robot to execute the desired gait cycle.
 </p>
 <p>
-Se cuenta con un algoritmo que hace esto. Sin embargo, para cada conjunto de parámetros de entrada, el algoritmo tarda alrededor de 5 minutos en calcular las trayectorias articulares, no siendo válido para su uso en tiempo real. Por ello, se considera crear una red neuronal para, a partir de datos obtenidas del algoritmo, ser entrenada y utilizada en tiempo real.
+Traditionally, an algorithm computes 15 inflection points of normal joint trajectories and fits them with a spline function. However, each computation takes ~5 minutes, making it unsuitable for real-time applications. To address this, a Neural Network was designed and trained using pre-computed trajectories, enabling real-time performance.
 </p>
     CAMBIAR IMAGEN
     <p align="center">
@@ -15,57 +13,116 @@ Se cuenta con un algoritmo que hace esto. Sin embargo, para cada conjunto de par
 </p>
 
 ---
-<h2>🛠️ Neural Network design with Python</h2>
+<h2>🛠️ Neural Network Design</h2>
+Three architectures were initially considered: Multilayer Perceptron (MLP), Recurrent Neural Networks (RNNs), including advanced variants such as Long Short-Term Memory (LSTM) and Gated Recurrent Units (GRU), and Convolutional Neural Networks (CNNs). Since there is no temporal dependency or spatial structure in the input data, an MLP was selected.
+
+The neural network is configured with five input neurons and thirty output neurons. Its configuration is tested for 2, 3, and 4 hidden layers trained for 250, 500, 7500, and 1000 epochs. Among them, the best results in terms of Mean Squared Error (MSE) were four hidden layers comprising 32, 64, 128, and 256 neurons, respectively, being the network trained over 750 epochs.  
+
+<pre><code class="language-python">
+class MLP(nn.Module):
+    def __init__(self):
+        super(MLP, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(5, 32),  # Input layer
+            nn.ReLU(),          #  Non-linear activation function
+            nn.Linear(32, 64),  # Hidden layer
+            nn.ReLU(),
+            nn.Linear(64, 128),  # Hidden layer
+            nn.ReLU(),
+            nn.Linear(128, 256),  # Hidden layer
+            nn.ReLU(),
+            nn.Linear(256, 30)  # Output layer
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+modelo = MLP()
+criterio = nn.MSELoss()  # MSE = Mean Squared Error
+optimizador = optim.Adam(modelo.parameters(), lr=0.001)  # Learning rate
+</code></pre>
+<hr>
+
 <h2>🛠️ Data preparation</h2>
 <i>1. Importing & cleaning data </i> <br>
-The original dataset (<i>"data_raw.csv"</i>) was reviewed in Excel to understand its structure, identify irrelevant columns, and check for data types.
-<p>
-The data was composed of one first column containing the cost of an external algorithm´s fitness function when generating the training data. For now, it is not útil. then, this column is deleted, obtaining <i>"data_complete.csv"</i>.
-</p>
-<p>
-    El resto del archivo se compone de 5 columnas con los datos de entrada, en metros que se convierten a centímetros, y 30 columnas que contienen los 15 puntos de inflexión de las trayectorias (15 coordenadas X y 15 coordenadas Y alternas) para luego, haciendo uso de la función "spline", calcular las trayectorias completas. Las columnas impares contienen valores en porcentaje del ciclo de la marcha y las columnas pares las amplitudes en grados.
-</p>
+<ol>
+  <li>
+    <b>Import & cleaning</b>
+    <ul>
+      <li>Original dataset (<code>data_raw.csv</code>) contained irrelevant columns, which were removed.</li>
+      <li>Final dataset (<code>data_complete.csv</code>) has:
+        <ul>
+          <li><b>5 input columns</b> (anthropometric/gait parameters, converted to cm).</li>
+          <li><b>30 output columns</b> (15 gait inflection points: % gait cycle and amplitude in degrees).</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ol>
 <p align="center">
 <img src="Images/Import_window.png" alt="SQL Import Window" width="250">
 </p>
 
-<i>2. Training, validation, and testing dataset preparation</i> <br>
-As previously explained, the input dataset is split into three groups: training (80%), validation (15%), and testing (5%). The training set is used to train the neural network, the validation set monitors performance during training, and the test set is the one used in this assessment process. This step enables the selection of the best-performing trained model.
-<p>
-    Para ello, de forma aleatoria, se separan las filas en 3 archivos: <i>"data_train.csv", data_valid.csv", y "data_test.csv"</i>.
-</p>
+<ol start="2">
+  <li>
+    <b>Dataset splitting</b>
+    <ul>
+      <li>Total: 2,022 samples</li>
+      <li>Split: 80% training, 15% validation, 5% testing</li>
+      <li>Files: <code>data_train.csv</code>, <code>data_valid.csv</code>, <code>data_test.csv</code></li>
+    </ul>
+  </li>
+</ol>
+
+<hr>
 
 ---
-<h2>📈 NN training</h2>
-<i>1. Importing Cleaned Data </i> <br>
-<p>
-Cleaned data was imported into Power BI as .csv or directly from the MySQL database. 
-</p>
-<i>2. data Transformation with DAX </i> <br>
-<p>
-New measures created:<strong>Total Revenue, Total Profit, Total Discounts Given, and Average Order Revenue</strong>.
-</p>
-<p>
-Additional columns: <strong>Month Name, Month Number, Day Name, Day Number</strong> — useful for chronological charts and trend lines.
-</p>
-<i>3. Dashboard Design </i> <br>
-Design principles:
+<h<h2>📈 Training</h2>
 
-- Focused on executive-level KPIs.
-- Key metrics displayed using value cards: Total Revenue, Total Profit, Total Orders, etc.
+<p>Training and validation sets were imported into Python, split into batches of 32, and fed into the MLP. 
+Validation RMSE was monitored during training to ensure error reduction and avoid overfitting.</p>
 
-Visuals include:
+<pre><code class="language-python">
+train_dataset = MiDataset("data_train.csv")
+valid_dataset = MiDataset("data_valid.csv")
 
-- Bar charts (e.g., daily revenue, revenue by category)
-- Line charts (e.g., monthly trends)	
-- Map charts and scatter plots
-- Filters for dynamic analysis (e.g., by country or store)
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+valid_loader = DataLoader(valid_dataset, batch_size=32, shuffle=False)
+</code></pre>
+
+<hr>
+
+<h2>📈 Testing</h2>
+
+<p>
+The <b>test dataset</b> was used to compute RMSE for both gait-phase coordinates (%) and joint angles (°).
+</p>
+
+<p><b>Results:</b></p>
+
+<ul>
+  <li><b>Full dataset (2,022 samples):</b>
+    <ul>
+      <li>Gait-phase: 1.29 ± 0.43 % (max: 2.31%)</li>
+      <li>Joint angles: 1.60 ± 0.73° (max: 3.78°)</li>
+    </ul>
+  </li>
+  <li><b>Filtered dataset (1,487 high-quality samples):</b>
+    <ul>
+      <li>Gait-phase: 1.36 ± 0.47 %</li>
+      <li>Joint angles: 1.49 ± 0.68°</li>
+    </ul>
+  </li>
+</ul>
+
+<p>The reduced dataset provided similar performance with cleaner inputs. 
+Increasing dataset size further did not yield significant improvements.</p>
+
 <p align="center">
-<img src="Images/Sales_Dashboard.png" alt="Sales Dashboard" width="700">
-</p>
+  <img src="Images/Trajectory_Example.png" alt="Trajectory Example" width="700">
+</p> 
 
----
-<h2>📈 NN testing</h2>
+
 
 ---
 <h2>✅ Key Insights from the Sales Dashboard</h2>
