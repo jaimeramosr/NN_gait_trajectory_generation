@@ -7,8 +7,7 @@ This project focuses on developing a Neural Network to generate gait kinematic t
 <p>
 Traditionally, an algorithm computes 15 inflection points of normal joint trajectories and fits them with a spline function. However, each computation takes ~5 minutes, making it unsuitable for real-time applications. To address this, a Neural Network was designed and trained using pre-computed trajectories, enabling real-time performance.
 </p>
-    CAMBIAR IMAGEN
-    <p align="center">
+<p align="center">
   <img src="Images/Intro.png" alt="Intro" width="700">
 </p>
 
@@ -38,7 +37,8 @@ class MLP(nn.Module):
 
     def forward(self, x):
         return self.model(x)
-
+</code></pre>
+<pre><code class="language-python">
 modelo = MLP()
 criterio = nn.MSELoss()  # MSE = Mean Squared Error
 optimizador = optim.Adam(modelo.parameters(), lr=0.001)  # Learning rate
@@ -75,7 +75,6 @@ optimizador = optim.Adam(modelo.parameters(), lr=0.001)  # Learning rate
 
 <hr>
 
----
 <h2>📈 Training</h2>
 
 <p>Training and validation sets were imported into Python, split into batches of 32, and fed into the MLP. 
