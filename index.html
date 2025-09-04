@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neural Network Gait Kinematic Trajectories</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.6;
+      max-width: 900px;
+    }
+    h1, h2 {
+      color: #222;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    code {
+      font-family: monospace;
+    }
+    img {
+      margin: 15px 0;
+    }
+    hr {
+      margin: 40px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🧠 Neural Network Gait Kinematic Trajectories</h1>
+  <p>
+    This project focuses on developing a Neural Network to generate gait kinematic trajectories based on 
+    <b>anthropometric parameters</b> (femur and tibia lengths, hip width) and <b>gait objectives</b> 
+    (step length and height). The trajectories are required for a robot to execute the desired gait cycle.
+  </p>
+  <p>
+    Traditionally, an algorithm computes 15 inflection points of normal joint trajectories and fits them with a spline function. 
+    However, each computation takes ~5 minutes, making it unsuitable for real-time applications. To address this, a Neural Network 
+    was designed and trained using pre-computed trajectories, enabling real-time performance.
+  </p>
+  <p align="center">
+    <img src="Images/Intro.png" alt="Intro" width="700">
+  </p>
+
+  <hr>
+  <h2>🛠️ Neural Network Design</h2>
+  <p>
+    Three architectures were initially considered: Multilayer Perceptron (MLP), Recurrent Neural Networks (RNNs), 
+    including advanced variants such as Long Short-Term Memory (LSTM) and Gated Recurrent Units (GRU), 
+    and Convolutional Neural Networks (CNNs). Since there is no temporal dependency or spatial structure in the input data, 
+    an MLP was selected.
+  </p>
+  <p>
+    The neural network is configured with five input neurons and thirty output neurons. Its configuration is tested for 2, 3, 
+    and 4 hidden layers trained for 250, 500, 7500, and 1000 epochs. Among them, the best results in terms of Mean Squared Error (MSE) 
+    were four hidden layers comprising 32, 64, 128, and 256 neurons, respectively, being the network trained over 750 epochs.  
+  </p>
+
+  <pre><code class="language-python">
+class MLP(nn.Module):
+    def __init__(self):
+        super(MLP, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(5, 32),  # Input layer
+            nn.ReLU(),          #  Non-linear activation function
+            nn.Linear(32, 64),  # Hidden layer
+            nn.ReLU(),
+            nn.Linear(64, 128),  # Hidden layer
+            nn.ReLU(),
+            nn.Linear(128, 256),  # Hidden layer
+            nn.ReLU(),
+            nn.Linear(256, 30)  # Output layer
+        )
+
+    def forward(self, x):
+        return self.model(x)
+  </code></pre>
+
+  <pre><code class="language-python">
+modelo = MLP()
+criterio = nn.MSELoss()  # MSE = Mean Squared Error
+optimizador = optim.Adam(modelo.parameters(), lr=0.001)  # Learning rate
+  </code></pre>
+
+  <hr>
+  <h2>🛠️ Data preparation</h2>
+  <i>1. Importing & cleaning data </i> <br>
+  <ol>
+    <li>
+      <b>Import & cleaning</b>
+      <ul>
+        <li>Original dataset (<code>data_raw.csv</code>) contained irrelevant columns, which were removed.</li>
+        <li>Final dataset (<code>data_complete.csv</code>) has:
+          <ul>
+            <li><b>5 input columns</b> (anthropometric/gait parameters, converted to cm).</li>
+            <li><b>30 output columns</b> (15 gait inflection points: % gait cycle and amplitude in degrees).</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+  </ol>
+
+  <ol start="2">
+    <li>
+      <b>Dataset splitting</b>
+      <ul>
+        <li>Total: 2,022 samples</li>
+        <li>Split: 80% training, 15% validation, 5% testing</li>
+        <li>Files: <code>data_train.csv</code>, <code>data_valid.csv</code>, <code>data_test.csv</code></li>
+      </ul>
+    </li>
+  </ol>
+
+  <hr>
+  <h2>📈 Training</h2>
+  <p>
+    Training and validation sets were imported into Python, split into batches of 32, and fed into the MLP. 
+    Validation RMSE was monitored during training to ensure error reduction and avoid overfitting.
+  </p>
+  <p align="center">
+    <img src="Images/Train_validation.png" alt="Training Validation" width="250">
+  </p>
+
+  <pre><code class="language-python">
+train_dataset = MiDataset("data_train.csv")
+valid_dataset = MiDataset("data_valid.csv")
+
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+valid_loader = DataLoader(valid_dataset, batch_size=32, shuffle=False)
+  </code></pre>
+
+  <hr>
+  <h2>📊 Testing</h2>
+  <p>
+    The <b>test dataset</b> was used to compute RMSE for both gait-phase coordinates (%) and joint angles (°).
+  </p>
+
+  <p><b>Results:</b></p>
+  <ul>
+    <li><b>Full dataset (2,022 samples):</b>
+      <ul>
+        <li>Gait-phase: 1.29 ± 0.43 % (max: 2.31%)</li>
+        <li>Joint angles: 1.60 ± 0.73° (max: 3.78°)</li>
+      </ul>
+    </li>
+    <li><b>Filtered dataset (1,487 high-quality samples):</b>
+      <ul>
+        <li>Gait-phase: 1.36 ± 0.47 %</li>
+        <li>Joint angles: 1.49 ± 0.68°</li>
+      </ul>
+    </li>
+  </ul>
+
+  <p>
+    The reduced dataset provided similar performance with cleaner inputs. 
+    Increasing dataset size further did not yield significant improvements.
+  </p>
+  <p>
+    Finally, one example of the tested trajectories is shown in the image below (red:reference, blue:output).
+  </p>
+  <p align="center">
+    <img src="Images/Kinematics.png" alt="Trajectory Example" width="700">
+  </p>
+
+</body>
+</html>
